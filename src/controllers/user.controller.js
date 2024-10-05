@@ -339,7 +339,7 @@ const updateAccountDetails = asyncHandler (async(req, res) => {
         )
 });
 
-const updateUserAvatar = asyncHandler ( async(req, res) => {
+const updateUserAvatar = asyncHandler (async(req, res) => {
 
     const avatarLocalPath = req.file?.path;
     if(!avatarLocalPath){
@@ -360,7 +360,7 @@ const updateUserAvatar = asyncHandler ( async(req, res) => {
             }
         },
         {new: true}
-    )
+    ).select("-password")
 
     return res
         .status(200)
@@ -394,7 +394,7 @@ const updateUserCoverImage = asyncHandler ( async(req, res) => {
             }
         },
         {new: true}
-    )
+    ).select("-password")
 
     return res
         .status(200)
