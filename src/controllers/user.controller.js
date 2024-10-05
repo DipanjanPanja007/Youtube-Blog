@@ -207,8 +207,6 @@ const logoutUser= asyncHandler( async(req, res) => {
         .json(new ApiResponse(200, {} , "User logged out"))
 });
 
-
-
 const refreshAccessToken = asyncHandler( async(req, res) => {
 
     /* After some time of login, `Access token` expires -> user gets 401 responce,
@@ -273,18 +271,22 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
 
 
 const changeCurrentPassword = asyncHandler( async(req, res) => {
+
+    // take old and new password from user body
     const { oldPassword , newPassword } = req.body;
 
+    // find user in db by userid collected from req.user
     const user = await User.findById(req.user?._id);
-    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);            // check if given old password is correct 
 
     if(!isPasswordCorrect){
         throw new ApiError(401, "Invalid old Password");
     }
 
+    // set local user.password as new one
     user.password = newPassword;
 
-    await user.save({validateBeforeSave: false})         // we don't want other fields to be touched  
+    await user.save({validateBeforeSave: false})         // we don't want other fields to be touched in db
 
     return res
         .status(200)
@@ -299,6 +301,8 @@ const changeCurrentPassword = asyncHandler( async(req, res) => {
 
 
 const getCurrentUser = asyncHandler( async(req, res) =>{
+
+    // user is available because of middleware, so just return req.user
     return res
         .status(200)
         .json(
@@ -311,6 +315,8 @@ const getCurrentUser = asyncHandler( async(req, res) =>{
 });
 
 const updateAccountDetails = asyncHandler (async(req, res) => {
+
+    // change fullName and email
     const { fullName, email } = req.body;
 
     if(!fullName || !email){
@@ -341,11 +347,13 @@ const updateAccountDetails = asyncHandler (async(req, res) => {
 
 const updateUserAvatar = asyncHandler (async(req, res) => {
 
+    // check if file is given or not, if given, take it's path
     const avatarLocalPath = req.file?.path;
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is required")
     }
 
+    // upload in cloudinary
     const avatar = await uploadOnCloudinary(avatarLocalPath);
 
     if(!avatar.url){
@@ -356,7 +364,7 @@ const updateUserAvatar = asyncHandler (async(req, res) => {
         req.user._id,
         {
             $set: {
-                avatar: avatar.url
+                avatar: avatar.url                         // update avatar url
             }
         },
         {new: true}
