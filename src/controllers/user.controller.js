@@ -8,6 +8,13 @@ import jwt from "jsonwebtoken"
 
 
 const generateAccessAndRefreshTokens = async (userId) =>{
+
+    /*
+     * generate Access and Refresh Token, 
+     * Update refresh Token into db ( just update refreshToken, else untouched )
+     * return Access and Refresh Token
+     */
+
     try {
         const user = await User.findById(userId);
 
@@ -172,6 +179,13 @@ const loginUser = asyncHandler( async(req, res) => {
 
 
 const logoutUser= asyncHandler( async(req, res) => {
+
+    /*
+     * access id from req.user
+     * delete refreshToken of the user from db ($set : {refreshToken: undefined}) and also make sure updated version is get
+     * then clear cookies: i.e. accessToken and refreshToken
+     */
+
     await User.findByIdAndUpdate(
         req.user._id,                                           // find by id (req.user._id)
         {
@@ -194,15 +208,18 @@ const logoutUser= asyncHandler( async(req, res) => {
 });
 
 
-/* After some time of login, `Access token` expires -> user gets 401 responce,
- * then user have to login once again 😥
- * there a better suggestion came: match user's RefreshToken(present in cookie or body) with db's Refresh Token if same.
- * if matches->ok User.Then a set of fresh RefreshToken and Access Token generated, Refresh Token updated to db, and a set sent to user .
- * When Access token expires, the cycle begins. 
- * Here user doesn't need to login again and again 😎😀😎😀
- * But take care of security 🔐🔓
- */ 
+
 const refreshAccessToken = asyncHandler( async(req, res) => {
+
+    /* After some time of login, `Access token` expires -> user gets 401 responce,
+    * then user have to login once again 😥
+    * there a better suggestion came: match user's RefreshToken(present in cookie or body) with db's Refresh Token if same.
+    * if matches->ok User.Then a set of fresh RefreshToken and Access Token generated, Refresh Token updated to db, and a set sent to user .
+    * When Access token expires, the cycle begins. 
+    * Here user doesn't need to login again and again 😎😀😎😀
+    * But take care of security 🔐🔓
+    */ 
+
     // take refresh token from cookie
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
     if(!incomingRefreshToken){
@@ -233,7 +250,7 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
         // generate a set of fresh RefreshToken and Access Token, and update into db
         const {newAccessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
 
-        
+
         return res
             .status(200)
             .cookie("accessToken", newAccessToken, options)
@@ -251,7 +268,6 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid Refresh Token");
     }
-
 
 });
 
