@@ -47,8 +47,8 @@ const registerUser = asyncHandler( async (req, res) => {
      */
 
     // Step#1: get user details from frontend  ( text data->from body, images->from multer-middleware-fields)
-    // console.log(`printing request: ${JSON.stringify(req.body)}`);               // testing
 
+    // console.log(`printing request: ${JSON.stringify(req.body)}`);               // testing
     const { fullName, email, username, password } =  req.body;
 
     // Step#2: validation - not empty
