@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import jwt from "jsonwebtoken"
 import { User } from "../models/user.model.js"
 
-export const verifyJWT = asyncHandler( async (req, _, next) => {                 // (req, res, next) -> here res is not used, so can write as '-'
+export const verifyJWT = asyncHandler( async (req, _, next) => {                 // (req, res, next) -> here res is not used, so can write res as '-'
     try {
         const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "")
     
