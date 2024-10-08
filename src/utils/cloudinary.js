@@ -10,7 +10,23 @@ cloudinary.config({
 });
 
 
-const uploadOnCloudinary = async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath , avatarURL) => {
+
+    try {             // trying to delete old image, not working
+        if(avatarURL){
+            cloudinary.uploader.destroy(avatarURL, (error, result) => {
+                if (result) {
+                    console.log('Image deleted:', result);
+                } else {
+                    console.error('Error deleting image:', error);                    
+                }
+            })
+
+        }
+    } catch (error) {
+        console.log("User not found error", error);        
+    }
+
     try {
         if(!localFilePath){
             return null;

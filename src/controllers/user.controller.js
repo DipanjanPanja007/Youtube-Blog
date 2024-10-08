@@ -3,7 +3,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 
 
@@ -24,7 +25,7 @@ const generateAccessAndRefreshTokens = async (userId) =>{
 
         user.refreshToken = refreshToken;
         await user.save({validateBeforeSave: false});
-
+        
         return { accessToken, refreshToken }
 
     } catch (error) {
@@ -189,7 +190,8 @@ const logoutUser= asyncHandler( async(req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,                                           // find by id (req.user._id)
         {
-            $set : {refreshToken: undefined}                    // delete refreshToken 
+            // $set : {refreshToken: null}                    // delete refreshToken 
+            $unset : {refreshToken: 1}                             // delete refreshToken (better)
         },
         {
             new : true                                          // in response it will send the new object
@@ -211,7 +213,7 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
 
     /* After some time of login, `Access token` expires -> user gets 401 responce,
     * then user have to login once again 😥
-    * there a better suggestion came: match user's RefreshToken(present in cookie or body) with db's Refresh Token if same.
+    * there a better suggestion came: match user's RefreshToken(present in cookie or body) with db's Refresh Token.
     * if matches->ok User.Then a set of fresh RefreshToken and Access Token generated, Refresh Token updated to db, and a set sent to user .
     * When Access token expires, the cycle begins. 
     * Here user doesn't need to login again and again 😎😀😎😀
@@ -226,7 +228,7 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
 
     try {
         // verify refresh token and get decoded refresh token
-        const decodedRefreshToken = jwt.verify(incomingRefreshToken , process.env.REFRESH_TOKEN_SECRET);
+        const decodedRefreshToken = jwt.verify(incomingRefreshToken , process.env.REFRESH_TOKEN_SECRET);     
     
         // in out refresh token, we have encoded _id of user, there find the user 
         const user = await User.findById(decodedRefreshToken?._id);
@@ -242,12 +244,12 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
         // take care of security 🔐🔓
         const options = { 
             httpOnly: true,
-            secure: true
-        }
+            secure: true,
+        } 
     
         // generate a set of fresh RefreshToken and Access Token, and update into db
-        const {newAccessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
-
+        const {accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
+        
 
         return res
             .status(200)
@@ -323,6 +325,9 @@ const updateAccountDetails = asyncHandler (async(req, res) => {
         throw new ApiError(401, "All fields are required");
     }
 
+    // console.log(`full name: ${fullName} and email: ${email}`);
+    
+ 
     const user = await User.findOneAndUpdate(
         req.user._id,
         {
@@ -345,7 +350,7 @@ const updateAccountDetails = asyncHandler (async(req, res) => {
         )
 });
 
-const updateUserAvatar = asyncHandler (async(req, res) => {
+const updateUserAvatar = asyncHandler (async(req, res) => { 
 
     // check if file is given or not, if given, take it's path
     const avatarLocalPath = req.file?.path;
@@ -353,8 +358,9 @@ const updateUserAvatar = asyncHandler (async(req, res) => {
         throw new ApiError(400, "Avatar file is required")
     }
 
+    const avatarURL = await req.user.avatar
     // upload in cloudinary
-    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    const avatar = await uploadOnCloudinary(avatarLocalPath,avatarURL);
 
     if(!avatar.url){
         throw new ApiError(400, "Something went wrong while uploading avatar on Cloudinary")
@@ -419,7 +425,7 @@ const updateUserCoverImage = asyncHandler ( async(req, res) => {
 const getuserChannelProfile = asyncHandler ( async( req, res ) => { 
     
     const {username} = req.params ; 
-    if(!username?.trim){
+    if(!username?.trim()){
         throw new ApiError(400, "Username is missing ... ");
     }
 
@@ -448,19 +454,21 @@ const getuserChannelProfile = asyncHandler ( async( req, res ) => {
         {
             $addFields: {
                 subscribersCount: {
-                    $size: "subscribers",
+                    $size: "$subscribers",
                 },
                 channelsSubstribedToCount : {
-                    $size: "subscribedTo" 
+                    $size: "$subscribedTo" 
                 },
                 /* 
                  * condition to check if subscribed or not: 
                  * check if in the field `subscribers`.subscriber, check if `req.user?._id` is present or not
                  */
-                isSubscribed : {
-                    if: { $in: [ req.user?._id , "$subscribers.subscriber" ] },
-                    then: true,
-                    else: false
+                isSubscribed: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true, 
+                        else: false
+                    }
                 }
 
             }
